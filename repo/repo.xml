@@ -1,7 +1,7 @@
 <?xml version='1.0' standalone='yes'?>
 <extensions>
   <plugins>
-    <plugin minTarget="8.3.0" version="1.0.0" name="PLUGIN_INSIGHTTIMER_NAME" maxTarget="*">
+    <plugin minTarget="8.3.0" version="1.0.0" name="InsightTimer" maxTarget="*">
       <creator>27Bslash6</creator>
       <link>https://github.com/27Bslash6/lms-plugin-insighttimer/releases/download/v1.0.0/lms-plugin-insighttimer-1.0.0.zip</link>
       <sha>271d80193f2bbdbe3d0a369f73b30bdd4a770e7e</sha>
