@@ -17,12 +17,12 @@ my $prefs = preferences('plugin.insighttimer');
 sub canSkip { 1 }
 sub isRemote { 1 }
 
-# HLS streams are transcoded via ffmpeg (custom-convert.conf: m3u8 -> flc)
-sub getFormatForURL { 'm3u8' }
+# HLS streams — LMS proxies through itself, player receives AAC audio
+sub getFormatForURL { 'aac' }
 
 sub formatOverride {
 	my ($class, $song) = @_;
-	return $song->pluginData('format') || 'm3u8';
+	return $song->pluginData('format') || 'aac';
 }
 
 # Avoid scanning remote URLs
@@ -32,6 +32,12 @@ sub scanUrl {
 }
 
 sub audioScrobblerSource { 'P' }
+
+# Send the HLS URL directly to the player — squeezelite handles HLS natively
+sub canDirectStreamSong {
+	my ($class, $client, $song) = @_;
+	return $song->streamUrl() || 0;
+}
 
 # Override new to pass the resolved stream URL to the HTTPS parent class
 sub new {
@@ -90,14 +96,12 @@ sub getNextTrack {
 			duration => $item->{media_length},
 			icon     => $image,
 			cover    => $image,
-			type     => 'flc',
+			type     => 'aac',
 			bitrate  => 'VBR',
 		};
 		$cache->set('it_meta_' . $itemId, $meta, Plugins::InsightTimer::API::DETAIL_TTL);
 
-		# Set the HLS URL as the stream URL — ffmpeg reads it directly
-		# via custom-convert.conf rule (m3u8 -> flc)
-		$song->pluginData(format => 'm3u8');
+		$song->pluginData(format => 'aac');
 		$song->streamUrl($streamUrl);
 
 		# Record in recent history
@@ -147,7 +151,7 @@ sub getMetadataFor {
 						duration => $item->{media_length},
 						icon     => $image,
 						cover    => $image,
-						type     => 'flc',
+						type     => 'aac',
 						bitrate  => 'VBR',
 					};
 					$cache->set('it_meta_' . $itemId, $fetched, Plugins::InsightTimer::API::DETAIL_TTL);
