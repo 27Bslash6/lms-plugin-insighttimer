@@ -181,22 +181,22 @@ sub getTopics {
 }
 
 # getStreamUrl($item) — returns ($url, $format)
-# Prefers direct MP3 for maximum compatibility. HLS requires ffmpeg transcoding
-# which most LMS setups don't have configured for HLS input.
+# Prefers HLS (higher quality, adaptive bitrate AAC) which squeezelite/WiiM handle natively.
+# Falls back to MP3 if no HLS available.
 sub getStreamUrl {
 	my ($item) = @_;
 
 	return (undef, undef) unless $item;
 
-	# Always prefer MP3 — direct stream, works on all hardware
-	# HLS (.m3u8) requires an HLS-aware player or ffmpeg pipeline
-	if (my $url = _getUrlFromPaths($item, 'standard_media_paths')) {
-		return ($url, 'mp3');
+	# Prefer HLS — higher quality, resolves from libraryitems.insighttimer.com (DNS works)
+	# MP3 hostnames (staticmp3.insighttimer.com) may not resolve in all environments
+	if (my $url = _getUrlFromPaths($item, 'media_paths')) {
+		return ($url, 'aac');
 	}
 
-	# Fallback to HLS only if no MP3 available
-	if (my $url = _getUrlFromPaths($item, 'media_paths')) {
-		return ($url, 'hls');
+	# Fallback to MP3
+	if (my $url = _getUrlFromPaths($item, 'standard_media_paths')) {
+		return ($url, 'mp3');
 	}
 
 	return (undef, undef);
@@ -223,6 +223,11 @@ sub getImageUrl {
 	}
 	if (ref $item->{picture}) {
 		return $item->{picture}{medium} || $item->{picture}{small};
+	}
+
+	# Construct from item ID (predictable URL pattern)
+	if ($item->{id}) {
+		return DETAIL_URL . $item->{id} . '/pictures/rectangle_medium.jpeg';
 	}
 
 	return undef;

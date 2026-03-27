@@ -209,11 +209,13 @@ sub _renderItems {
 		my $duration = Plugins::InsightTimer::API::formatDuration($item->{duration});
 		my $subtitle = $item->{publisher_name} || '';
 		$subtitle .= " ($duration)" if $duration;
+		my $image = Plugins::InsightTimer::API::getImageUrl($item);
 
 		{
 			name    => $item->{title},
 			line1   => $item->{title},
 			line2   => $subtitle,
+			image   => $image,
 			type    => 'playlist',
 			url     => \&itemMenu,
 			passthrough => [{

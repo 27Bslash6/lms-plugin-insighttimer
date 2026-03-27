@@ -16,11 +16,11 @@ my $prefs = preferences('plugin.insighttimer');
 
 sub canSkip { 1 }
 
-sub getFormatForURL { 'mp3' }
+sub getFormatForURL { 'aac' }
 
 sub formatOverride {
 	my ($class, $song) = @_;
-	return $song->pluginData('format') || 'mp3';
+	return $song->pluginData('format') || 'aac';
 }
 
 # Avoid scanning remote URLs
@@ -71,16 +71,18 @@ sub getNextTrack {
 			return $errorCb->("Failed to get track info");
 		}
 
-		my ($streamUrl, $format) = Plugins::InsightTimer::API::getStreamUrl($item);
+		my ($streamUrl, $streamFormat) = Plugins::InsightTimer::API::getStreamUrl($item);
 		if (!$streamUrl) {
 			$log->error("No stream URL found for: $itemId");
 			return $errorCb->("No stream available");
 		}
 
-		$log->info("Stream URL ($format): $streamUrl");
+		$log->info("Stream URL ($streamFormat): $streamUrl");
 
 		my $publisher_name = ($item->{publisher} && $item->{publisher}{name}) || '';
 		my $image = Plugins::InsightTimer::API::getImageUrl($item);
+
+		my $format = ($streamFormat eq 'mp3') ? 'mp3' : 'aac';
 
 		my $meta = {
 			title    => $item->{title},
@@ -88,12 +90,12 @@ sub getNextTrack {
 			duration => $item->{media_length},
 			icon     => $image,
 			cover    => $image,
-			type     => 'mp3',
-			bitrate  => '128k CBR',
+			type     => $format,
+			bitrate  => ($format eq 'mp3') ? '128k CBR' : 'VBR',
 		};
 		$cache->set('it_meta_' . $itemId, $meta, Plugins::InsightTimer::API::DETAIL_TTL);
 
-		$song->pluginData(format => 'mp3');
+		$song->pluginData(format => $format);
 		$song->streamUrl($streamUrl);
 
 		# Record in recent history
@@ -143,8 +145,8 @@ sub getMetadataFor {
 						duration => $item->{media_length},
 						icon     => $image,
 						cover    => $image,
-						type     => 'mp3',
-						bitrate  => '128k CBR',
+						type     => 'aac',
+						bitrate  => 'VBR',
 					};
 					$cache->set('it_meta_' . $itemId, $fetched, Plugins::InsightTimer::API::DETAIL_TTL);
 				}
@@ -156,7 +158,7 @@ sub getMetadataFor {
 	}
 
 	return {
-		type  => 'mp3',
+		type  => 'aac',
 		icon  => $icon,
 		cover => $icon,
 	};
