@@ -17,19 +17,12 @@ my $prefs = preferences('plugin.insighttimer');
 sub canSkip { 1 }
 sub isRemote { 1 }
 
-sub getFormatForURL { 'aac' }
+# HLS streams are transcoded via ffmpeg (custom-convert.conf: m3u8 -> flc)
+sub getFormatForURL { 'm3u8' }
 
 sub formatOverride {
 	my ($class, $song) = @_;
-	return $song->pluginData('format') || 'aac';
-}
-
-# Tell LMS to send the resolved stream URL directly to the player
-# rather than proxying through itself. The player (squeezelite/WiiM)
-# handles HLS natively.
-sub canDirectStreamSong {
-	my ($class, $client, $song) = @_;
-	return $song->streamUrl() || 0;
+	return $song->pluginData('format') || 'm3u8';
 }
 
 # Avoid scanning remote URLs
@@ -41,7 +34,6 @@ sub scanUrl {
 sub audioScrobblerSource { 'P' }
 
 # Override new to pass the resolved stream URL to the HTTPS parent class
-# This is used when direct streaming is not possible (e.g., player can't do HTTPS)
 sub new {
 	my $class = shift;
 	my $args  = shift;
@@ -92,20 +84,20 @@ sub getNextTrack {
 		my $publisher_name = ($item->{publisher} && $item->{publisher}{name}) || '';
 		my $image = Plugins::InsightTimer::API::getImageUrl($item);
 
-		my $format = ($streamFormat eq 'mp3') ? 'mp3' : 'aac';
-
 		my $meta = {
 			title    => $item->{title},
 			artist   => $publisher_name,
 			duration => $item->{media_length},
 			icon     => $image,
 			cover    => $image,
-			type     => $format,
-			bitrate  => ($format eq 'mp3') ? '128k CBR' : 'VBR',
+			type     => 'flc',
+			bitrate  => 'VBR',
 		};
 		$cache->set('it_meta_' . $itemId, $meta, Plugins::InsightTimer::API::DETAIL_TTL);
 
-		$song->pluginData(format => $format);
+		# Set the HLS URL as the stream URL — ffmpeg reads it directly
+		# via custom-convert.conf rule (m3u8 -> flc)
+		$song->pluginData(format => 'm3u8');
 		$song->streamUrl($streamUrl);
 
 		# Record in recent history
@@ -155,7 +147,7 @@ sub getMetadataFor {
 						duration => $item->{media_length},
 						icon     => $image,
 						cover    => $image,
-						type     => 'aac',
+						type     => 'flc',
 						bitrate  => 'VBR',
 					};
 					$cache->set('it_meta_' . $itemId, $fetched, Plugins::InsightTimer::API::DETAIL_TTL);
@@ -168,7 +160,7 @@ sub getMetadataFor {
 	}
 
 	return {
-		type  => 'aac',
+		type  => 'flc',
 		icon  => $icon,
 		cover => $icon,
 	};
