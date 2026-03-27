@@ -24,7 +24,6 @@ sub initPlugin {
 	$prefs->init({
 		language     => 'en',
 		itemsPerPage => 50,
-		preferHLS    => 1,
 		favorites    => [],
 		teachers     => [],
 		recent       => [],
@@ -113,31 +112,42 @@ sub searchHandler {
 	}, { params => { query => $query } });
 }
 
-# --- Browse by Category ---
+# --- Browse by Category (dynamic from Topics API) ---
 
 sub browseCategories {
-	my ($client, $cb) = @_;
+	my ($client, $cb, $params, $args) = @_;
 
-	my $items = [ map {
-		{
-			name => cstring($client, $_->{stringKey}),
-			type => 'link',
-			url  => \&browseList,
-			passthrough => [{ topics => $_->{slug}, sort_option => 'popular' }],
+	Plugins::InsightTimer::API::getTopics(sub {
+		my $topics = shift;
+
+		if (!$topics || !scalar @$topics) {
+			return $cb->({ items => [{
+				name => 'No categories available',
+				type => 'textarea',
+			}] });
 		}
-	} @{Plugins::InsightTimer::API::CATEGORIES} ];
 
-	$cb->({ items => $items });
+		my $items = [ map {
+			{
+				name => $_->{name},
+				type => 'link',
+				url  => \&browseList,
+				passthrough => [{ topics => $_->{slug}, sort_option => 'popular' }],
+			}
+		} @$topics ];
+
+		$cb->({ items => $items });
+	});
 }
 
 # --- Browse by Type ---
 
 sub browseTypes {
-	my ($client, $cb) = @_;
+	my ($client, $cb, $params, $args) = @_;
 
 	my $items = [ map {
 		{
-			name => cstring($client, $_->{stringKey}),
+			name => $_->{name},
 			type => 'link',
 			url  => \&browseList,
 			passthrough => [{ content_types => $_->{type}, sort_option => 'popular' }],
@@ -154,7 +164,7 @@ sub browseList {
 
 	$args ||= {};
 
-	my $offset = $params->{offset} || $args->{offset} || 0;
+	my $offset = int($params->{offset} || $args->{offset} || 0);
 	my $limit = $prefs->get('itemsPerPage') || Plugins::InsightTimer::API::DEFAULT_LIMIT;
 
 	my $apiParams = {
@@ -223,6 +233,8 @@ sub _renderItems {
 sub itemMenu {
 	my ($client, $cb, $params, $args) = @_;
 
+	return $cb->({ items => [] }) unless $args && $args->{id};
+
 	my $url = 'insighttimer://' . $args->{id} . '.mp3';
 
 	my $items = [
@@ -286,7 +298,6 @@ sub toggleFavorite {
 	if (_isFavorite($args->{id})) {
 		$favorites = [ grep { $_->{id} ne $args->{id} } @$favorites ];
 	} else {
-		# Add to front, dedup, cap
 		unshift @$favorites, {
 			id             => $args->{id},
 			title          => $args->{title},
@@ -297,11 +308,9 @@ sub toggleFavorite {
 			added_at       => time(),
 		};
 
-		# Dedup by id (keep first = newest)
 		my %seen;
 		$favorites = [ grep { !$seen{$_->{id}}++ } @$favorites ];
 
-		# Cap
 		splice @$favorites, Plugins::InsightTimer::API::MAX_FAVORITES
 			if scalar @$favorites > Plugins::InsightTimer::API::MAX_FAVORITES;
 	}
@@ -410,11 +419,9 @@ sub addToRecent {
 		played_at      => time(),
 	};
 
-	# Dedup by id (keep first = most recent play)
 	my %seen;
 	$recent = [ grep { !$seen{$_->{id}}++ } @$recent ];
 
-	# Cap at MAX_RECENT
 	splice @$recent, Plugins::InsightTimer::API::MAX_RECENT
 		if scalar @$recent > Plugins::InsightTimer::API::MAX_RECENT;
 

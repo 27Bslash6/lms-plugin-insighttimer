@@ -16,11 +16,7 @@ my $prefs = preferences('plugin.insighttimer');
 
 sub canSkip { 1 }
 
-sub getFormatForURL {
-	my ($class, $url) = @_;
-	# Default to mp3; overridden per-song by formatOverride if HLS
-	return 'mp3';
-}
+sub getFormatForURL { 'mp3' }
 
 sub formatOverride {
 	my ($class, $song) = @_;
@@ -33,7 +29,6 @@ sub scanUrl {
 	$args->{cb}->($args->{song}->currentTrack());
 }
 
-# Source for AudioScrobbler
 sub audioScrobblerSource { 'P' }
 
 sub getNextTrack {
@@ -47,7 +42,7 @@ sub getNextTrack {
 		return $errorCb->("Invalid Insight Timer URL");
 	}
 
-	main::DEBUGLOG && $log->is_debug && $log->debug("Resolving stream for item: $itemId");
+	$log->info("Resolving stream for item: $itemId");
 
 	Plugins::InsightTimer::API::getItem(sub {
 		my $item = shift;
@@ -63,24 +58,23 @@ sub getNextTrack {
 			return $errorCb->("No stream available");
 		}
 
-		main::DEBUGLOG && $log->is_debug && $log->debug("Stream URL ($format): $streamUrl");
+		$log->info("Stream URL ($format): $streamUrl");
 
 		my $publisher_name = ($item->{publisher} && $item->{publisher}{name}) || '';
 		my $image = Plugins::InsightTimer::API::getImageUrl($item);
 
-		# Cache metadata for getMetadataFor
 		my $meta = {
 			title    => $item->{title},
 			artist   => $publisher_name,
 			duration => $item->{media_length},
 			icon     => $image,
 			cover    => $image,
-			type     => $format eq 'hls' ? 'aac' : 'mp3',
-			bitrate  => $format eq 'hls' ? 'VBR' : '128k CBR',
+			type     => 'mp3',
+			bitrate  => '128k CBR',
 		};
 		$cache->set('it_meta_' . $itemId, $meta, Plugins::InsightTimer::API::DETAIL_TTL);
 
-		$song->pluginData(format => ($format eq 'hls' ? 'aac' : 'mp3'));
+		$song->pluginData(format => 'mp3');
 		$song->streamUrl($streamUrl);
 
 		# Record in recent history
@@ -111,7 +105,6 @@ sub getMetadataFor {
 
 	my $icon = $class->getIcon();
 
-	# Fetch metadata asynchronously if not cached
 	if ($itemId && $client) {
 		my $now = time();
 		@pendingMeta = grep { $_->{time} + 60 > $now } @pendingMeta;
@@ -124,9 +117,6 @@ sub getMetadataFor {
 				@pendingMeta = grep { $_->{id} ne $itemId } @pendingMeta;
 
 				if ($item) {
-					my ($streamUrl, $format) = Plugins::InsightTimer::API::getStreamUrl($item);
-					my $actualType    = ($format && $format eq 'hls') ? 'aac' : 'mp3';
-					my $actualBitrate = ($format && $format eq 'hls') ? 'VBR' : '128k CBR';
 					my $image = Plugins::InsightTimer::API::getImageUrl($item) || $icon;
 					my $fetched = {
 						title    => $item->{title},
@@ -134,13 +124,12 @@ sub getMetadataFor {
 						duration => $item->{media_length},
 						icon     => $image,
 						cover    => $image,
-						type     => $actualType,
-						bitrate  => $actualBitrate,
+						type     => 'mp3',
+						bitrate  => '128k CBR',
 					};
 					$cache->set('it_meta_' . $itemId, $fetched, Plugins::InsightTimer::API::DETAIL_TTL);
 				}
 
-				# Notify immediately per-completion
 				$client->currentPlaylistUpdateTime(Time::HiRes::time());
 				Slim::Control::Request::notifyFromArray($client, ['newmetadata']);
 			}, $itemId);
@@ -158,7 +147,6 @@ sub getIcon {
 	return Plugins::InsightTimer::Plugin->_pluginDataFor('icon');
 }
 
-# Extract item ID from insighttimer://{id}.mp3 URL
 sub _getId {
 	my ($url) = @_;
 

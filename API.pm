@@ -12,41 +12,32 @@ use Slim::Utils::Prefs;
 
 use constant FILTER_URL => 'https://filtering.insighttimer-api.net/api/v1/single-tracks/filter';
 use constant DETAIL_URL => 'https://libraryitems.insighttimer.com/';
+use constant TOPICS_URL => 'https://topics.insighttimer-api.net/topics.json';
 
 use constant SEARCH_TTL   => 300;    # 5 min — match CDN cache
 use constant DETAIL_TTL   => 3600;   # 1 hour
-use constant IMAGE_TTL    => 86400;  # 24 hours
+use constant TOPICS_TTL   => 86400;  # 24 hours — topics rarely change
 
 use constant DEFAULT_LIMIT => 50;
 use constant MAX_FAVORITES => 500;
 use constant MAX_TEACHERS  => 50;
 use constant MAX_RECENT    => 50;
 
-# Curated categories: slug => string key
-use constant CATEGORIES => [
-	{ slug => 'sleep',       stringKey => 'PLUGIN_INSIGHTTIMER_SLEEP' },
-	{ slug => 'stress',      stringKey => 'PLUGIN_INSIGHTTIMER_STRESS' },
-	{ slug => 'focus',       stringKey => 'PLUGIN_INSIGHTTIMER_FOCUS' },
-	{ slug => 'selflove',    stringKey => 'PLUGIN_INSIGHTTIMER_SELFLOVE' },
-	{ slug => 'morning',     stringKey => 'PLUGIN_INSIGHTTIMER_MORNING' },
-	{ slug => 'yoganidra',   stringKey => 'PLUGIN_INSIGHTTIMER_YOGANIDRA' },
-	{ slug => 'bodyscan',    stringKey => 'PLUGIN_INSIGHTTIMER_BODYSCAN' },
-	{ slug => 'breathwork',  stringKey => 'PLUGIN_INSIGHTTIMER_BREATHWORK' },
+# Content types: filter value => display name
+use constant CONTENT_TYPES => [
+	{ type => 'guided', name => 'Guided Meditations' },
+	{ type => 'music',  name => 'Music' },
+	{ type => 'talks',  name => 'Talks' },
 ];
 
-# Content types: filter value => string key
-use constant CONTENT_TYPES => [
-	{ type => 'guided', stringKey => 'PLUGIN_INSIGHTTIMER_GUIDED' },
-	{ type => 'music',  stringKey => 'PLUGIN_INSIGHTTIMER_MUSIC' },
-	{ type => 'talks',  stringKey => 'PLUGIN_INSIGHTTIMER_TALKS' },
-];
+# Topic groups we want to show as browse categories
+use constant BROWSE_TOPIC_GROUPS => ['BENEFITS', 'PRACTICES'];
 
 my $cache = Slim::Utils::Cache->new;
 my $log   = logger('plugin.insighttimer');
 my $prefs = preferences('plugin.insighttimer');
 
 # search(\&callback, { params => { query => 'sleep', content_types => 'guided', ... } })
-# Calls the IT filter API. Callback receives ($items_arrayref) or undef on error.
 sub search {
 	my ($cb, $args) = @_;
 
@@ -69,11 +60,10 @@ sub search {
 
 	my $cached = $cache->get('it_search_' . $url);
 	if ($cached) {
-		main::DEBUGLOG && $log->is_debug && $log->debug("Cache hit for $url");
 		return $cb->($cached);
 	}
 
-	main::DEBUGLOG && $log->is_debug && $log->debug("Fetching: $url");
+	$log->info("Fetching: $url");
 
 	Slim::Networking::SimpleAsyncHTTP->new(
 		sub {
@@ -99,7 +89,6 @@ sub search {
 }
 
 # getItem(\&callback, $itemId)
-# Fetches full item detail. Callback receives ($item_hashref) or undef on error.
 sub getItem {
 	my ($cb, $itemId) = @_;
 
@@ -134,32 +123,80 @@ sub getItem {
 	)->get($url);
 }
 
-# getStreamUrl($item) — returns stream URL based on user's preferred format
-# Synchronous — operates on already-fetched item detail data.
-# Returns ($url, $format) where $format is 'mp3' or 'hls'
+# getTopics(\&callback) — fetches dynamic topic list from IT API
+sub getTopics {
+	my ($cb) = @_;
+
+	my $cached = $cache->get('it_topics');
+	if ($cached) {
+		return $cb->($cached);
+	}
+
+	$log->info("Fetching topics from: " . TOPICS_URL);
+
+	Slim::Networking::SimpleAsyncHTTP->new(
+		sub {
+			my $http = shift;
+			my $topics = eval { from_json($http->content) };
+
+			if ($@ || !$topics || ref $topics ne 'ARRAY') {
+				$log->error("Failed to parse topics: " . ($@ || 'not an array'));
+				return $cb->(undef);
+			}
+
+			# Filter to browseable groups and build simple list
+			my %groups = map { $_ => 1 } @{BROWSE_TOPIC_GROUPS()};
+			my @filtered;
+			for my $t (@$topics) {
+				next unless $t->{topic_group} && $groups{$t->{topic_group}};
+				my $name = $t->{id} || next;
+				# Title-case the slug: "selflove" -> "Selflove", "bodyscan" -> "Bodyscan"
+				$name = ucfirst($name);
+				# Try to get English translation if available
+				if ($t->{translations} && $t->{translations}{en} && $t->{translations}{en}{name}) {
+					$name = $t->{translations}{en}{name};
+				}
+				push @filtered, {
+					slug  => $t->{id},
+					name  => $name,
+					group => $t->{topic_group},
+				};
+			}
+
+			# Sort: BENEFITS first, then PRACTICES, alpha within each
+			@filtered = sort {
+				($a->{group} cmp $b->{group}) || ($a->{name} cmp $b->{name})
+			} @filtered;
+
+			$cache->set('it_topics', \@filtered, TOPICS_TTL);
+			$cb->(\@filtered);
+		},
+		sub {
+			my ($http, $error) = @_;
+			$log->error("Topics API error: $error");
+			$cb->(undef);
+		},
+		{ timeout => 30 },
+	)->get(TOPICS_URL);
+}
+
+# getStreamUrl($item) — returns ($url, $format)
+# Prefers direct MP3 for maximum compatibility. HLS requires ffmpeg transcoding
+# which most LMS setups don't have configured for HLS input.
 sub getStreamUrl {
 	my ($item) = @_;
 
 	return (undef, undef) unless $item;
 
-	my $preferHLS = $prefs->get('preferHLS');
+	# Always prefer MP3 — direct stream, works on all hardware
+	# HLS (.m3u8) requires an HLS-aware player or ffmpeg pipeline
+	if (my $url = _getUrlFromPaths($item, 'standard_media_paths')) {
+		return ($url, 'mp3');
+	}
 
-	if ($preferHLS) {
-		# Try HLS first, fall back to MP3
-		if (my $url = _getUrlFromPaths($item, 'media_paths')) {
-			return ($url, 'hls');
-		}
-		if (my $url = _getUrlFromPaths($item, 'standard_media_paths')) {
-			return ($url, 'mp3');
-		}
-	} else {
-		# Try MP3 first, fall back to HLS
-		if (my $url = _getUrlFromPaths($item, 'standard_media_paths')) {
-			return ($url, 'mp3');
-		}
-		if (my $url = _getUrlFromPaths($item, 'media_paths')) {
-			return ($url, 'hls');
-		}
+	# Fallback to HLS only if no MP3 available
+	if (my $url = _getUrlFromPaths($item, 'media_paths')) {
+		return ($url, 'hls');
 	}
 
 	return (undef, undef);
@@ -181,7 +218,6 @@ sub getImageUrl {
 
 	return undef unless $item;
 
-	# Detail format: picture_square.medium or picture.medium
 	if (ref $item->{picture_square}) {
 		return $item->{picture_square}{medium} || $item->{picture_square}{small};
 	}
@@ -192,7 +228,7 @@ sub getImageUrl {
 	return undef;
 }
 
-# formatDuration($seconds) — returns human-readable duration string
+# formatDuration($seconds)
 sub formatDuration {
 	my ($seconds) = @_;
 
@@ -205,10 +241,11 @@ sub formatDuration {
 		return $min > 0 ? "${hr}h ${min}m" : "${hr}h";
 	}
 
-	return "${min}m";
+	return "${min}m" if $min > 0;
+	return "<1m";
 }
 
-# _normalizeFilterResults(\@raw) — normalize filter API response to flat item hashes
+# _normalizeFilterResults(\@raw)
 sub _normalizeFilterResults {
 	my ($raw) = @_;
 

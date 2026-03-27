@@ -11,6 +11,6 @@ sub name { Slim::Web::HTTP::CSRF->protectName('PLUGIN_INSIGHTTIMER_NAME') }
 
 sub page { Slim::Web::HTTP::CSRF->protectURI('plugins/InsightTimer/settings.html') }
 
-sub prefs { return ($prefs, qw(language itemsPerPage preferHLS)) }
+sub prefs { return ($prefs, qw(language itemsPerPage)) }
 
 1;

@@ -1,11 +1,6 @@
 [% title = "PLUGIN_INSIGHTTIMER_NAME" %]
 [% PROCESS settings/header.html %]
 
-	[% WRAPPER setting title="PLUGIN_INSIGHTTIMER_PREFER_HLS" desc="PLUGIN_INSIGHTTIMER_PREFER_HLS_DESC" %]
-		<input type="checkbox" name="pref_preferHLS" id="preferHLS" [% IF
-			prefs.pref_preferHLS %]checked="checked" [% END %] value="1" class="stdedit" />
-	[% END %]
-
 	[% WRAPPER setting title="PLUGIN_INSIGHTTIMER_LANGUAGE" desc="PLUGIN_INSIGHTTIMER_LANGUAGE_DESC" %]
 		<select class="stdedit" name="pref_language">
 		[% FOREACH entry IN [
