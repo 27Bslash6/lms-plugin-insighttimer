@@ -1,0 +1,38 @@
+[% title = "PLUGIN_INSIGHTTIMER_NAME" %]
+[% PROCESS settings/header.html %]
+
+	[% WRAPPER setting title="PLUGIN_INSIGHTTIMER_PREFER_HLS" desc="PLUGIN_INSIGHTTIMER_PREFER_HLS_DESC" %]
+		<input type="checkbox" name="pref_preferHLS" id="preferHLS" [% IF
+			prefs.pref_preferHLS %]checked="checked" [% END %] value="1" class="stdedit" />
+	[% END %]
+
+	[% WRAPPER setting title="PLUGIN_INSIGHTTIMER_LANGUAGE" desc="PLUGIN_INSIGHTTIMER_LANGUAGE_DESC" %]
+		<select class="stdedit" name="pref_language">
+		[% FOREACH entry IN [
+			['English', 'en'],
+			['Spanish', 'es'],
+			['French', 'fr'],
+			['German', 'de'],
+			['Portuguese', 'pt'],
+			['Italian', 'it'],
+			['Dutch', 'nl'],
+			['All Languages', '']
+		] %]
+			<option [% IF entry.1 == prefs.pref_language %]selected[% END %] value="[% entry.1 %]">[% entry.0 %]</option>
+		[% END %]
+		</select>
+	[% END %]
+
+	[% WRAPPER setting title="PLUGIN_INSIGHTTIMER_ITEMS_PER_PAGE" desc="PLUGIN_INSIGHTTIMER_ITEMS_PER_PAGE_DESC" %]
+		<select class="stdedit" name="pref_itemsPerPage">
+		[% FOREACH entry IN [
+			['25', '25'],
+			['50', '50'],
+			['100', '100']
+		] %]
+			<option [% IF entry.1 == prefs.pref_itemsPerPage %]selected[% END %] value="[% entry.1 %]">[% entry.0 %]</option>
+		[% END %]
+		</select>
+	[% END %]
+
+[% PROCESS settings/footer.html %]
