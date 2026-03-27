@@ -31,6 +31,25 @@ sub scanUrl {
 
 sub audioScrobblerSource { 'P' }
 
+# Override new to pass the resolved stream URL to the HTTPS parent class
+sub new {
+	my $class = shift;
+	my $args  = shift;
+
+	my $song      = $args->{song};
+	my $streamUrl = $song->streamUrl() || return;
+
+	$log->info("Streaming: $streamUrl");
+
+	my $sock = $class->SUPER::new({
+		url    => $streamUrl,
+		song   => $args->{song},
+		client => $args->{client},
+	}) || return;
+
+	return $sock;
+}
+
 sub getNextTrack {
 	my ($class, $song, $successCb, $errorCb) = @_;
 
