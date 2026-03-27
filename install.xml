@@ -1,0 +1,15 @@
+<?xml version='1.0' standalone='yes'?>
+<extensions>
+  <name>PLUGIN_INSIGHTTIMER_NAME</name>
+  <description>PLUGIN_INSIGHTTIMER_DESC</description>
+  <creator>27Bslash6</creator>
+  <id>a3f7c912-8b4e-4d1a-9f6e-2c8b5a7d3e10</id>
+  <version>1.0.0</version>
+  <module>Plugins::InsightTimer::Plugin</module>
+  <optionsURL>plugins/InsightTimer/settings.html</optionsURL>
+  <category>musicservices</category>
+  <targetApplication>
+    <minVersion>8.3.0</minVersion>
+    <maxVersion>*</maxVersion>
+  </targetApplication>
+</extensions>

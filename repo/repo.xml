@@ -1,0 +1,14 @@
+<?xml version='1.0' standalone='yes'?>
+<extensions>
+  <details>
+    <title lang="EN">Insight Timer</title>
+  </details>
+  <plugins>
+    <plugin version="1.0.0" name="PLUGIN_INSIGHTTIMER_NAME" minTarget="8.3.0" maxTarget="*">
+      <link>https://github.com/27Bslash6/lms-plugin-insighttimer/releases/download/v1.0.0/lms-plugin-insighttimer-1.0.0.zip</link>
+      <sha>TO_BE_FILLED_BY_RELEASE_SCRIPT</sha>
+      <desc lang="EN">Browse and stream guided meditations, music, and talks from Insight Timer.</desc>
+      <creator>27Bslash6</creator>
+    </plugin>
+  </plugins>
+</extensions>

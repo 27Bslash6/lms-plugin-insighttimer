@@ -1,0 +1,107 @@
+PLUGIN_INSIGHTTIMER_NAME
+	EN	Insight Timer
+
+PLUGIN_INSIGHTTIMER_DESC
+	EN	Browse and stream guided meditations, music, and talks from Insight Timer.
+
+PLUGIN_INSIGHTTIMER_SEARCH
+	EN	Search
+
+PLUGIN_INSIGHTTIMER_BROWSE_CATEGORY
+	EN	Browse by Category
+
+PLUGIN_INSIGHTTIMER_BROWSE_TYPE
+	EN	Browse by Type
+
+PLUGIN_INSIGHTTIMER_POPULAR
+	EN	Popular Now
+
+PLUGIN_INSIGHTTIMER_HIGHEST_RATED
+	EN	Highest Rated
+
+PLUGIN_INSIGHTTIMER_FAVORITES
+	EN	My Favorites
+
+PLUGIN_INSIGHTTIMER_TEACHERS
+	EN	My Teachers
+
+PLUGIN_INSIGHTTIMER_RECENT
+	EN	Recently Played
+
+PLUGIN_INSIGHTTIMER_GUIDED
+	EN	Guided Meditations
+
+PLUGIN_INSIGHTTIMER_MUSIC
+	EN	Music
+
+PLUGIN_INSIGHTTIMER_TALKS
+	EN	Talks
+
+PLUGIN_INSIGHTTIMER_SLEEP
+	EN	Sleep
+
+PLUGIN_INSIGHTTIMER_STRESS
+	EN	Stress & Anxiety
+
+PLUGIN_INSIGHTTIMER_FOCUS
+	EN	Focus & Concentration
+
+PLUGIN_INSIGHTTIMER_SELFLOVE
+	EN	Self-Love
+
+PLUGIN_INSIGHTTIMER_MORNING
+	EN	Morning Meditation
+
+PLUGIN_INSIGHTTIMER_YOGANIDRA
+	EN	Yoga Nidra
+
+PLUGIN_INSIGHTTIMER_BODYSCAN
+	EN	Body Scan
+
+PLUGIN_INSIGHTTIMER_BREATHWORK
+	EN	Breathwork
+
+PLUGIN_INSIGHTTIMER_ADD_FAVORITE
+	EN	Add to Favorites
+
+PLUGIN_INSIGHTTIMER_REMOVE_FAVORITE
+	EN	Remove from Favorites
+
+PLUGIN_INSIGHTTIMER_FOLLOW_TEACHER
+	EN	Follow Teacher
+
+PLUGIN_INSIGHTTIMER_UNFOLLOW_TEACHER
+	EN	Unfollow Teacher
+
+PLUGIN_INSIGHTTIMER_MORE_FROM_TEACHER
+	EN	More from this Teacher
+
+PLUGIN_INSIGHTTIMER_PLAY
+	EN	Play
+
+PLUGIN_INSIGHTTIMER_NO_FAVORITES
+	EN	No favorites yet. Browse and add some!
+
+PLUGIN_INSIGHTTIMER_NO_TEACHERS
+	EN	No followed teachers yet.
+
+PLUGIN_INSIGHTTIMER_NO_RECENT
+	EN	No recently played items.
+
+PLUGIN_INSIGHTTIMER_LANGUAGE
+	EN	Content Language
+
+PLUGIN_INSIGHTTIMER_LANGUAGE_DESC
+	EN	Filter content by language. Leave empty for all languages.
+
+PLUGIN_INSIGHTTIMER_ITEMS_PER_PAGE
+	EN	Items per Page
+
+PLUGIN_INSIGHTTIMER_ITEMS_PER_PAGE_DESC
+	EN	Number of results to show per page when browsing.
+
+PLUGIN_INSIGHTTIMER_PREFER_HLS
+	EN	Prefer HLS Streaming (Higher Quality)
+
+PLUGIN_INSIGHTTIMER_PREFER_HLS_DESC
+	EN	Use HLS adaptive streaming for higher quality audio. Disable for older Squeezebox hardware (Classic, Boom, Transporter) which only supports direct MP3.
