@@ -15,12 +15,21 @@ my $cache = Slim::Utils::Cache->new;
 my $prefs = preferences('plugin.insighttimer');
 
 sub canSkip { 1 }
+sub isRemote { 1 }
 
 sub getFormatForURL { 'aac' }
 
 sub formatOverride {
 	my ($class, $song) = @_;
 	return $song->pluginData('format') || 'aac';
+}
+
+# Tell LMS to send the resolved stream URL directly to the player
+# rather than proxying through itself. The player (squeezelite/WiiM)
+# handles HLS natively.
+sub canDirectStreamSong {
+	my ($class, $client, $song) = @_;
+	return $song->streamUrl() || 0;
 }
 
 # Avoid scanning remote URLs
@@ -32,6 +41,7 @@ sub scanUrl {
 sub audioScrobblerSource { 'P' }
 
 # Override new to pass the resolved stream URL to the HTTPS parent class
+# This is used when direct streaming is not possible (e.g., player can't do HTTPS)
 sub new {
 	my $class = shift;
 	my $args  = shift;
