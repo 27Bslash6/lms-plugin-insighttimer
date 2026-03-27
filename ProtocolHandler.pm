@@ -2,8 +2,11 @@ package Plugins::InsightTimer::ProtocolHandler;
 
 use strict;
 
+use File::Temp;
+
 use Slim::Utils::Cache;
 use Slim::Utils::Log;
+use Slim::Utils::Misc;
 use Slim::Utils::Prefs;
 
 use Plugins::InsightTimer::API;
@@ -17,12 +20,12 @@ my $prefs = preferences('plugin.insighttimer');
 sub canSkip { 1 }
 sub isRemote { 1 }
 
-# HLS streams — LMS proxies through itself, player receives AAC audio
-sub getFormatForURL { 'aac' }
+# HLS via ffmpeg transcode: m3u8 -> flc
+sub getFormatForURL { 'm3u8' }
 
 sub formatOverride {
 	my ($class, $song) = @_;
-	return $song->pluginData('format') || 'aac';
+	return $song->pluginData('format') || 'm3u8';
 }
 
 # Avoid scanning remote URLs
@@ -32,31 +35,6 @@ sub scanUrl {
 }
 
 sub audioScrobblerSource { 'P' }
-
-# Send the HLS URL directly to the player — squeezelite handles HLS natively
-sub canDirectStreamSong {
-	my ($class, $client, $song) = @_;
-	return $song->streamUrl() || 0;
-}
-
-# Override new to pass the resolved stream URL to the HTTPS parent class
-sub new {
-	my $class = shift;
-	my $args  = shift;
-
-	my $song      = $args->{song};
-	my $streamUrl = $song->streamUrl() || return;
-
-	$log->info("Streaming: $streamUrl");
-
-	my $sock = $class->SUPER::new({
-		url    => $streamUrl,
-		song   => $args->{song},
-		client => $args->{client},
-	}) || return;
-
-	return $sock;
-}
 
 sub getNextTrack {
 	my ($class, $song, $successCb, $errorCb) = @_;
@@ -96,13 +74,28 @@ sub getNextTrack {
 			duration => $item->{media_length},
 			icon     => $image,
 			cover    => $image,
-			type     => 'aac',
+			type     => 'flc',
 			bitrate  => 'VBR',
 		};
 		$cache->set('it_meta_' . $itemId, $meta, Plugins::InsightTimer::API::DETAIL_TTL);
 
-		$song->pluginData(format => 'aac');
-		$song->streamUrl($streamUrl);
+		# Write HLS URL to a temp .m3u8 file for ffmpeg to read
+		# (same pattern as TIDAL DASH: write manifest to file, ffmpeg reads it)
+		my $fh = File::Temp->new(
+			DIR    => Slim::Utils::Misc::getTempDir,
+			SUFFIX => '.m3u8',
+			UNLINK => 1,
+		);
+		print $fh $streamUrl;
+		$fh->close;
+
+		my $fileUrl = Slim::Utils::Misc::fileURLFromPath($fh);
+		$log->info("Temp manifest: $fileUrl (contains: $streamUrl)");
+
+		# Keep File::Temp ref alive until song finishes
+		$song->pluginData(manifest_fh => $fh);
+		$song->pluginData(format => 'm3u8');
+		$song->streamUrl($fileUrl);
 
 		# Record in recent history
 		Plugins::InsightTimer::Plugin->addToRecent({
@@ -151,7 +144,7 @@ sub getMetadataFor {
 						duration => $item->{media_length},
 						icon     => $image,
 						cover    => $image,
-						type     => 'aac',
+						type     => 'flc',
 						bitrate  => 'VBR',
 					};
 					$cache->set('it_meta_' . $itemId, $fetched, Plugins::InsightTimer::API::DETAIL_TTL);
