@@ -52,7 +52,8 @@ sub search {
 
 	my $params = $args->{params} || {};
 	my $lang = $params->{content_langs} || $prefs->get('language') || 'en';
-	my $limit = $params->{limit} || $prefs->get('itemsPerPage') || DEFAULT_LIMIT;
+	my $limit = int($params->{limit} || $prefs->get('itemsPerPage') || DEFAULT_LIMIT);
+	$limit = DEFAULT_LIMIT if $limit < 1 || $limit > 500;
 
 	my @query_parts;
 	push @query_parts, 'content_langs=' . uri_escape_utf8($lang);
@@ -102,7 +103,7 @@ sub search {
 sub getItem {
 	my ($cb, $itemId) = @_;
 
-	return $cb->(undef) unless $itemId;
+	return $cb->(undef) unless $itemId && $itemId =~ /^[a-zA-Z0-9_-]+$/;
 
 	my $cached = $cache->get('it_detail_' . $itemId);
 	if ($cached) {
@@ -145,18 +146,18 @@ sub getStreamUrl {
 
 	if ($preferHLS) {
 		# Try HLS first, fall back to MP3
-		if (my $url = _getHLSUrl($item)) {
+		if (my $url = _getUrlFromPaths($item, 'media_paths')) {
 			return ($url, 'hls');
 		}
-		if (my $url = _getMP3Url($item)) {
+		if (my $url = _getUrlFromPaths($item, 'standard_media_paths')) {
 			return ($url, 'mp3');
 		}
 	} else {
 		# Try MP3 first, fall back to HLS
-		if (my $url = _getMP3Url($item)) {
+		if (my $url = _getUrlFromPaths($item, 'standard_media_paths')) {
 			return ($url, 'mp3');
 		}
-		if (my $url = _getHLSUrl($item)) {
+		if (my $url = _getUrlFromPaths($item, 'media_paths')) {
 			return ($url, 'hls');
 		}
 	}
@@ -164,24 +165,12 @@ sub getStreamUrl {
 	return (undef, undef);
 }
 
-sub _getHLSUrl {
-	my ($item) = @_;
-	if ($item->{media_paths} && ref $item->{media_paths} eq 'ARRAY') {
-		for my $url (@{$item->{media_paths}}) {
+sub _getUrlFromPaths {
+	my ($item, $key) = @_;
+	if ($item->{$key} && ref $item->{$key} eq 'ARRAY') {
+		for my $url (@{$item->{$key}}) {
 			return $url if $url && $url =~ /^https:/;
 		}
-		return $item->{media_paths}[0] if $item->{media_paths}[0];
-	}
-	return undef;
-}
-
-sub _getMP3Url {
-	my ($item) = @_;
-	if ($item->{standard_media_paths} && ref $item->{standard_media_paths} eq 'ARRAY') {
-		for my $url (@{$item->{standard_media_paths}}) {
-			return $url if $url && $url =~ /^https:/;
-		}
-		return $item->{standard_media_paths}[0] if $item->{standard_media_paths}[0];
 	}
 	return undef;
 }

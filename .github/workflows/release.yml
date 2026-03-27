@@ -39,7 +39,7 @@ jobs:
 
       - name: Zip Repository
         id: zip
-        run: zip InsightTimer -r *.pm HTML install.xml strings.txt CLAUDE.md
+        run: zip InsightTimer -r *.pm HTML install.xml strings.txt
 
       - name: Setup Perl
         run: |

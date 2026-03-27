@@ -152,6 +152,8 @@ sub browseTypes {
 sub browseList {
 	my ($client, $cb, $params, $args) = @_;
 
+	$args ||= {};
+
 	my $offset = $params->{offset} || $args->{offset} || 0;
 	my $limit = $prefs->get('itemsPerPage') || Plugins::InsightTimer::API::DEFAULT_LIMIT;
 
@@ -273,30 +275,7 @@ sub showFavorites {
 		}] });
 	}
 
-	my $items = [ map {
-		my $fav = $_;
-		my $duration = Plugins::InsightTimer::API::formatDuration($fav->{duration});
-		my $subtitle = $fav->{publisher_name} || '';
-		$subtitle .= " ($duration)" if $duration;
-
-		{
-			name    => $fav->{title},
-			line1   => $fav->{title},
-			line2   => $subtitle,
-			type    => 'playlist',
-			url     => \&itemMenu,
-			passthrough => [{
-				id             => $fav->{id},
-				title          => $fav->{title},
-				publisher_id   => $fav->{publisher_id},
-				publisher_name => $fav->{publisher_name},
-				duration       => $fav->{duration},
-				content_type   => $fav->{content_type},
-			}],
-		};
-	} @$favorites ];
-
-	$cb->({ items => $items });
+	$cb->({ items => _renderItems($client, $favorites) });
 }
 
 sub toggleFavorite {
@@ -333,6 +312,7 @@ sub toggleFavorite {
 
 sub _isFavorite {
 	my ($id) = @_;
+	return 0 unless defined $id;
 	my $favorites = $prefs->get('favorites') || [];
 	return scalar grep { $_->{id} eq $id } @$favorites;
 }
@@ -419,8 +399,16 @@ sub showRecent {
 			name    => $r->{title},
 			line1   => $r->{title},
 			line2   => $subtitle,
-			type    => 'audio',
-			url     => 'insighttimer://' . $r->{id} . '.mp3',
+			type    => 'playlist',
+			url     => \&itemMenu,
+			passthrough => [{
+				id             => $r->{id},
+				title          => $r->{title},
+				publisher_id   => $r->{publisher_id},
+				publisher_name => $r->{publisher_name},
+				duration       => $r->{duration},
+				content_type   => $r->{content_type},
+			}],
 		};
 	} @$recent ];
 
@@ -438,10 +426,16 @@ sub addToRecent {
 	unshift @$recent, {
 		id             => $item->{id},
 		title          => $item->{title},
-		publisher_name => $item->{publisher_name} || $item->{publisher}{name} || '',
+		publisher_id   => $item->{publisher_id} || ($item->{publisher} && $item->{publisher}{id}) || '',
+		publisher_name => $item->{publisher_name} || ($item->{publisher} && $item->{publisher}{name}) || '',
 		duration       => $item->{duration} || $item->{media_length},
+		content_type   => $item->{content_type} || '',
 		played_at      => time(),
 	};
+
+	# Dedup by id (keep first = most recent play)
+	my %seen;
+	$recent = [ grep { !$seen{$_->{id}}++ } @$recent ];
 
 	# Cap at MAX_RECENT
 	splice @$recent, Plugins::InsightTimer::API::MAX_RECENT
