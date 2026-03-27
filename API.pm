@@ -212,9 +212,10 @@ sub formatDuration {
 sub _normalizeFilterResults {
 	my ($raw) = @_;
 
-	return [ map {
-		my $s = $_->{item_summary}{library_item_summary};
+	return [ grep { defined $_->{id} } map {
+		my $s = ($_->{item_summary} && $_->{item_summary}{library_item_summary}) || {};
 		my $m = $_->{metadata} || {};
+		my $pub = $s->{publisher} || {};
 		{
 			id             => $s->{id},
 			title          => $s->{title},
@@ -222,9 +223,8 @@ sub _normalizeFilterResults {
 			duration       => $s->{media_length},
 			rating         => $s->{rating_score},
 			rating_count   => $s->{rating_count},
-			publisher_id   => $s->{publisher}{id},
-			publisher_name => $s->{publisher}{name},
-			media_paths    => $s->{media_paths},
+			publisher_id   => $pub->{id},
+			publisher_name => $pub->{name},
 			play_count     => $m->{play_count},
 		};
 	} @$raw ];

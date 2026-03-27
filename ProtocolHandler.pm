@@ -87,8 +87,10 @@ sub getNextTrack {
 		Plugins::InsightTimer::Plugin->addToRecent({
 			id             => $itemId,
 			title          => $item->{title},
+			publisher_id   => ($item->{publisher} && $item->{publisher}{id}) || '',
 			publisher_name => $publisher_name,
 			duration       => $item->{media_length},
+			content_type   => $item->{content_type} || '',
 		});
 
 		$successCb->();
@@ -138,11 +140,9 @@ sub getMetadataFor {
 					$cache->set('it_meta_' . $itemId, $fetched, Plugins::InsightTimer::API::DETAIL_TTL);
 				}
 
-				# Notify when all pending fetches complete
-				unless (@pendingMeta) {
-					$client->currentPlaylistUpdateTime(Time::HiRes::time());
-					Slim::Control::Request::notifyFromArray($client, ['newmetadata']);
-				}
+				# Notify immediately per-completion
+				$client->currentPlaylistUpdateTime(Time::HiRes::time());
+				Slim::Control::Request::notifyFromArray($client, ['newmetadata']);
 			}, $itemId);
 		}
 	}

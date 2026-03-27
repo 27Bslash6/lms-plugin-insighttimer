@@ -389,30 +389,7 @@ sub showRecent {
 		}] });
 	}
 
-	my $items = [ map {
-		my $r = $_;
-		my $duration = Plugins::InsightTimer::API::formatDuration($r->{duration});
-		my $subtitle = $r->{publisher_name} || '';
-		$subtitle .= " ($duration)" if $duration;
-
-		{
-			name    => $r->{title},
-			line1   => $r->{title},
-			line2   => $subtitle,
-			type    => 'playlist',
-			url     => \&itemMenu,
-			passthrough => [{
-				id             => $r->{id},
-				title          => $r->{title},
-				publisher_id   => $r->{publisher_id},
-				publisher_name => $r->{publisher_name},
-				duration       => $r->{duration},
-				content_type   => $r->{content_type},
-			}],
-		};
-	} @$recent ];
-
-	$cb->({ items => $items });
+	$cb->({ items => _renderItems($client, $recent) });
 }
 
 # Called by ProtocolHandler when a track starts playing
