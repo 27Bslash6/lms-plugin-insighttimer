@@ -6,6 +6,7 @@
   <id>a3f7c912-8b4e-4d1a-9f6e-2c8b5a7d3e10</id>
   <version>1.0.0</version>
   <module>Plugins::InsightTimer::Plugin</module>
+  <icon>plugins/InsightTimer/html/icon.png</icon>
   <optionsURL>plugins/InsightTimer/settings.html</optionsURL>
   <category>musicservices</category>
   <targetApplication>
