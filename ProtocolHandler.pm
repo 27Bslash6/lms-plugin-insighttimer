@@ -2,11 +2,8 @@ package Plugins::InsightTimer::ProtocolHandler;
 
 use strict;
 
-use File::Temp;
-
 use Slim::Utils::Cache;
 use Slim::Utils::Log;
-use Slim::Utils::Misc;
 use Slim::Utils::Prefs;
 
 use Plugins::InsightTimer::API;
@@ -81,23 +78,10 @@ sub getNextTrack {
 		};
 		$cache->set('it_meta_' . $itemId, $meta, Plugins::InsightTimer::API::DETAIL_TTL);
 
-		# Write HLS URL to a temp .m3u8 file for ffmpeg to read
-		# (same pattern as TIDAL DASH: write manifest to file, ffmpeg reads it)
-		my $fh = File::Temp->new(
-			DIR    => Slim::Utils::Misc::getTempDir,
-			SUFFIX => '.m3u8',
-			UNLINK => 1,
-		);
-		my $tempPath = $fh->filename;
-		print $fh $streamUrl;
-		$fh->close;
-
-		$log->warn("Temp manifest: $tempPath (contains: $streamUrl)");
-
-		# Keep File::Temp ref alive until song finishes
-		$song->pluginData(manifest_fh => $fh);
 		$song->pluginData(format => 'm3u8');
-		$song->streamUrl(Slim::Utils::Misc::fileURLFromPath($tempPath));
+		$song->streamUrl($streamUrl);
+
+		$log->warn("Stream URL set to: $streamUrl");
 
 		# Record in recent history
 		Plugins::InsightTimer::Plugin->addToRecent({
