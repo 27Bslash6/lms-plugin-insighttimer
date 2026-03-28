@@ -4,7 +4,6 @@ use strict;
 
 use Slim::Utils::Cache;
 use Slim::Utils::Log;
-use Slim::Utils::Prefs;
 
 use Plugins::InsightTimer::API;
 
@@ -12,7 +11,6 @@ use base qw(Slim::Player::Protocols::HTTPS);
 
 my $log   = logger('plugin.insighttimer');
 my $cache = Slim::Utils::Cache->new;
-my $prefs = preferences('plugin.insighttimer');
 
 sub canSkip { 1 }
 sub isRemote { 1 }
@@ -69,12 +67,12 @@ sub getNextTrack {
 	Plugins::InsightTimer::API::getItem(sub {
 		my $item = shift;
 
-		$log->info("getItem: got item '$item->{title}'");
-
 		if (!$item) {
 			$log->error("Failed to fetch item detail for: $itemId");
 			return $errorCb->("Failed to get track info");
 		}
+
+		$log->info("getNextTrack: got item '$item->{title}'");
 
 		my ($streamUrl, $streamFormat) = Plugins::InsightTimer::API::getStreamUrl($item);
 		if (!$streamUrl) {
@@ -84,18 +82,7 @@ sub getNextTrack {
 
 		$log->info("Stream: $streamUrl ($streamFormat)");
 
-		my $publisher_name = ($item->{publisher} && $item->{publisher}{name}) || '';
-		my $image = Plugins::InsightTimer::API::getImageUrl($item);
-
-		my $meta = {
-			title    => $item->{title},
-			artist   => $publisher_name,
-			duration => $item->{media_length},
-			icon     => $image,
-			cover    => $image,
-			type     => 'flc',
-			bitrate  => 'HLS AAC 44.1kHz',
-		};
+		my $meta = _buildMeta($item);
 		$cache->set('it_meta_' . $itemId, $meta, Plugins::InsightTimer::API::DETAIL_TTL);
 
 		$song->pluginData(format => 'm3u8');
@@ -106,7 +93,7 @@ sub getNextTrack {
 			id             => $itemId,
 			title          => $item->{title},
 			publisher_id   => ($item->{publisher} && $item->{publisher}{id}) || '',
-			publisher_name => $publisher_name,
+			publisher_name => ($item->{publisher} && $item->{publisher}{name}) || '',
 			duration       => $item->{media_length},
 			content_type   => $item->{content_type} || '',
 		});
@@ -141,17 +128,7 @@ sub getMetadataFor {
 				@pendingMeta = grep { $_->{id} ne $itemId } @pendingMeta;
 
 				if ($item) {
-					my $image = Plugins::InsightTimer::API::getImageUrl($item) || $icon;
-					my $fetched = {
-						title    => $item->{title},
-						artist   => ($item->{publisher} && $item->{publisher}{name}) || '',
-						duration => $item->{media_length},
-						icon     => $image,
-						cover    => $image,
-						type     => 'flc',
-						bitrate  => 'VBR',
-					};
-					$cache->set('it_meta_' . $itemId, $fetched, Plugins::InsightTimer::API::DETAIL_TTL);
+					$cache->set('it_meta_' . $itemId, _buildMeta($item, $icon), Plugins::InsightTimer::API::DETAIL_TTL);
 				}
 
 				$client->currentPlaylistUpdateTime(Time::HiRes::time());
@@ -161,9 +138,24 @@ sub getMetadataFor {
 	}
 
 	return {
+		title => 'Insight Timer',
 		type  => 'flc',
 		icon  => $icon,
 		cover => $icon,
+	};
+}
+
+sub _buildMeta {
+	my ($item, $fallbackIcon) = @_;
+	my $image = Plugins::InsightTimer::API::getImageUrl($item) || $fallbackIcon;
+	return {
+		title    => $item->{title},
+		artist   => ($item->{publisher} && $item->{publisher}{name}) || '',
+		duration => $item->{media_length},
+		icon     => $image,
+		cover    => $image,
+		type     => 'flc',
+		bitrate  => 'HLS AAC 44.1kHz',
 	};
 }
 

@@ -260,7 +260,10 @@ sub itemMenu {
 			passthrough => [$args],
 			nextWindow => 'parent',
 		},
-		{
+	];
+
+	if ($args->{publisher_id}) {
+		push @$items, {
 			name => _isFollowing($args->{publisher_id})
 				? cstring($client, 'PLUGIN_INSIGHTTIMER_UNFOLLOW_TEACHER')
 				: cstring($client, 'PLUGIN_INSIGHTTIMER_FOLLOW_TEACHER'),
@@ -268,14 +271,13 @@ sub itemMenu {
 			url  => \&toggleTeacher,
 			passthrough => [$args],
 			nextWindow => 'parent',
-		},
-		{
+		}, {
 			name => cstring($client, 'PLUGIN_INSIGHTTIMER_MORE_FROM_TEACHER'),
 			type => 'link',
 			url  => \&browseList,
 			passthrough => [{ publisher_id => $args->{publisher_id}, sort_option => 'popular' }],
-		},
-	];
+		};
+	}
 
 	$cb->({ items => $items });
 }
@@ -305,7 +307,7 @@ sub toggleFavorite {
 	if (_isFavorite($args->{id})) {
 		$favorites = [ grep { $_->{id} ne $args->{id} } @$favorites ];
 	} else {
-		unshift @$favorites, {
+		$favorites = _addToList($favorites, {
 			id             => $args->{id},
 			title          => $args->{title},
 			publisher_id   => $args->{publisher_id},
@@ -313,13 +315,7 @@ sub toggleFavorite {
 			duration       => $args->{duration},
 			content_type   => $args->{content_type},
 			added_at       => time(),
-		};
-
-		my %seen;
-		$favorites = [ grep { !$seen{$_->{id}}++ } @$favorites ];
-
-		splice @$favorites, Plugins::InsightTimer::API::MAX_FAVORITES
-			if scalar @$favorites > Plugins::InsightTimer::API::MAX_FAVORITES;
+		}, 'id', Plugins::InsightTimer::API::MAX_FAVORITES);
 	}
 
 	$prefs->set('favorites', $favorites);
@@ -367,17 +363,11 @@ sub toggleTeacher {
 	if (_isFollowing($args->{publisher_id})) {
 		$teachers = [ grep { $_->{publisher_id} ne $args->{publisher_id} } @$teachers ];
 	} else {
-		unshift @$teachers, {
+		$teachers = _addToList($teachers, {
 			publisher_id => $args->{publisher_id},
 			name         => $args->{publisher_name},
 			added_at     => time(),
-		};
-
-		my %seen;
-		$teachers = [ grep { !$seen{$_->{publisher_id}}++ } @$teachers ];
-
-		splice @$teachers, Plugins::InsightTimer::API::MAX_TEACHERS
-			if scalar @$teachers > Plugins::InsightTimer::API::MAX_TEACHERS;
+		}, 'publisher_id', Plugins::InsightTimer::API::MAX_TEACHERS);
 	}
 
 	$prefs->set('teachers', $teachers);
@@ -414,9 +404,7 @@ sub addToRecent {
 
 	return unless $item && $item->{id};
 
-	my $recent = $prefs->get('recent') || [];
-
-	unshift @$recent, {
+	my $recent = _addToList($prefs->get('recent') || [], {
 		id             => $item->{id},
 		title          => $item->{title},
 		publisher_id   => $item->{publisher_id} || ($item->{publisher} && $item->{publisher}{id}) || '',
@@ -424,15 +412,19 @@ sub addToRecent {
 		duration       => $item->{duration} || $item->{media_length},
 		content_type   => $item->{content_type} || '',
 		played_at      => time(),
-	};
-
-	my %seen;
-	$recent = [ grep { !$seen{$_->{id}}++ } @$recent ];
-
-	splice @$recent, Plugins::InsightTimer::API::MAX_RECENT
-		if scalar @$recent > Plugins::InsightTimer::API::MAX_RECENT;
+	}, 'id', Plugins::InsightTimer::API::MAX_RECENT);
 
 	$prefs->set('recent', $recent);
+}
+
+# Prepend item, dedup by key, cap at max
+sub _addToList {
+	my ($list, $item, $id_field, $max) = @_;
+	unshift @$list, $item;
+	my %seen;
+	$list = [ grep { defined $_->{$id_field} && !$seen{$_->{$id_field}}++ } @$list ];
+	splice @$list, $max if scalar @$list > $max;
+	return $list;
 }
 
 1;

@@ -206,7 +206,8 @@ sub _getUrlFromPaths {
 	my ($item, $key) = @_;
 	if ($item->{$key} && ref $item->{$key} eq 'ARRAY') {
 		for my $url (@{$item->{$key}}) {
-			return $url if $url && $url =~ /^https:/;
+			next unless $url && $url =~ m{^https://[^/]*\.insighttimer(?:-api)?\.(?:com|net)/};
+			return $url;
 		}
 	}
 	return undef;
@@ -243,6 +244,7 @@ sub formatDuration {
 sub _normalizeFilterResults {
 	my ($raw) = @_;
 
+	my @valid = grep { ref $_ eq 'HASH' } @$raw;
 	return [ grep { defined $_->{id} } map {
 		my $s = ($_->{item_summary} && $_->{item_summary}{library_item_summary}) || {};
 		my $m = $_->{metadata} || {};
@@ -258,7 +260,7 @@ sub _normalizeFilterResults {
 			publisher_name => $pub->{name},
 			play_count     => $m->{play_count},
 		};
-	} @$raw ];
+	} @valid ];
 }
 
 1;
