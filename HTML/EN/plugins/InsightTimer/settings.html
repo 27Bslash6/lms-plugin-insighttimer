@@ -1,6 +1,12 @@
 [% title = "PLUGIN_INSIGHTTIMER_NAME" %]
 [% PROCESS settings/header.html %]
 
+	[% UNLESS ffmpeg %]
+	<div style="padding: 8px 12px; margin-bottom: 12px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; color: #664d03;">
+		<b>ffmpeg not found.</b> Insight Timer requires ffmpeg for audio playback (HLS streaming). Install ffmpeg and restart the server.
+	</div>
+	[% END %]
+
 	[% WRAPPER setting title="PLUGIN_INSIGHTTIMER_LANGUAGE" desc="PLUGIN_INSIGHTTIMER_LANGUAGE_DESC" %]
 		<select class="stdedit" name="pref_language">
 		[% FOREACH entry IN [

@@ -5,6 +5,7 @@ use strict;
 use base qw(Slim::Plugin::OPMLBased);
 
 use Slim::Utils::Log;
+use Slim::Utils::Misc;
 use Slim::Utils::Prefs;
 use Slim::Utils::Strings qw(cstring);
 
@@ -37,6 +38,10 @@ sub initPlugin {
 	Slim::Player::ProtocolHandlers->registerHandler(
 		'insighttimer', 'Plugins::InsightTimer::ProtocolHandler'
 	);
+
+	if (!Slim::Utils::Misc::findbin('ffmpeg')) {
+		$log->warn("ffmpeg not found — Insight Timer requires ffmpeg for HLS audio playback. Install ffmpeg and restart.");
+	}
 
 	$class->SUPER::initPlugin(
 		feed   => \&handleFeed,
