@@ -33,6 +33,26 @@ sub scanUrl {
 
 sub audioScrobblerSource { 'P' }
 
+# Override new() to pass the resolved streamUrl to HTTPS parent.
+# Without this, HTTPS::new() tries to connect to "insighttimer://..." as a hostname.
+sub new {
+	my $class = shift;
+	my $args  = shift;
+
+	my $song      = $args->{song};
+	my $streamUrl = $song->streamUrl() || return;
+
+	main::DEBUGLOG && $log->debug("Opening stream: $streamUrl");
+
+	my $sock = $class->SUPER::new({
+		url    => $streamUrl,
+		song   => $args->{song},
+		client => $args->{client},
+	}) || return;
+
+	return $sock;
+}
+
 sub getNextTrack {
 	my ($class, $song, $successCb, $errorCb) = @_;
 
@@ -44,12 +64,12 @@ sub getNextTrack {
 		return $errorCb->("Invalid Insight Timer URL");
 	}
 
-	$log->warn("getNextTrack called for: $url (itemId: " . ($itemId || 'NONE') . ")");
+	$log->info("getNextTrack: $url (itemId: $itemId)");
 
 	Plugins::InsightTimer::API::getItem(sub {
 		my $item = shift;
 
-		$log->warn("getItem callback: " . ($item ? "got item '$item->{title}'" : "FAILED"));
+		$log->info("getItem: got item '$item->{title}'");
 
 		if (!$item) {
 			$log->error("Failed to fetch item detail for: $itemId");
@@ -62,7 +82,7 @@ sub getNextTrack {
 			return $errorCb->("No stream available");
 		}
 
-		$log->info("Stream URL ($streamFormat): $streamUrl");
+		$log->info("Stream: $streamUrl ($streamFormat)");
 
 		my $publisher_name = ($item->{publisher} && $item->{publisher}{name}) || '';
 		my $image = Plugins::InsightTimer::API::getImageUrl($item);
@@ -80,8 +100,6 @@ sub getNextTrack {
 
 		$song->pluginData(format => 'm3u8');
 		$song->streamUrl($streamUrl);
-
-		$log->warn("Stream URL set to: $streamUrl");
 
 		# Record in recent history
 		Plugins::InsightTimer::Plugin->addToRecent({
