@@ -47,10 +47,12 @@ sub getNextTrack {
 		return $errorCb->("Invalid Insight Timer URL");
 	}
 
-	$log->info("Resolving stream for item: $itemId");
+	$log->warn("getNextTrack called for: $url (itemId: " . ($itemId || 'NONE') . ")");
 
 	Plugins::InsightTimer::API::getItem(sub {
 		my $item = shift;
+
+		$log->warn("getItem callback: " . ($item ? "got item '$item->{title}'" : "FAILED"));
 
 		if (!$item) {
 			$log->error("Failed to fetch item detail for: $itemId");
@@ -86,16 +88,16 @@ sub getNextTrack {
 			SUFFIX => '.m3u8',
 			UNLINK => 1,
 		);
+		my $tempPath = $fh->filename;
 		print $fh $streamUrl;
 		$fh->close;
 
-		my $fileUrl = Slim::Utils::Misc::fileURLFromPath($fh);
-		$log->info("Temp manifest: $fileUrl (contains: $streamUrl)");
+		$log->warn("Temp manifest: $tempPath (contains: $streamUrl)");
 
 		# Keep File::Temp ref alive until song finishes
 		$song->pluginData(manifest_fh => $fh);
 		$song->pluginData(format => 'm3u8');
-		$song->streamUrl($fileUrl);
+		$song->streamUrl(Slim::Utils::Misc::fileURLFromPath($tempPath));
 
 		# Record in recent history
 		Plugins::InsightTimer::Plugin->addToRecent({
