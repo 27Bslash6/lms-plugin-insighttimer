@@ -157,7 +157,7 @@ sub browseTypes {
 			url  => \&browseList,
 			passthrough => [{ content_types => $_->{type}, sort_option => 'popular' }],
 		}
-	} @{Plugins::InsightTimer::API::CONTENT_TYPES} ];
+	} @{Plugins::InsightTimer::API::CONTENT_TYPES()} ];
 
 	$cb->({ items => $items });
 }
