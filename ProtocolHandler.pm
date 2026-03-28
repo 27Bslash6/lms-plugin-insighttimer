@@ -94,7 +94,7 @@ sub getNextTrack {
 			icon     => $image,
 			cover    => $image,
 			type     => 'flc',
-			bitrate  => 'VBR',
+			bitrate  => 'HLS AAC 44.1kHz',
 		};
 		$cache->set('it_meta_' . $itemId, $meta, Plugins::InsightTimer::API::DETAIL_TTL);
 

@@ -212,25 +212,14 @@ sub _getUrlFromPaths {
 	return undef;
 }
 
-# getImageUrl($item) — returns image URL from item data (filter or detail format)
+# getImageUrl($item) — returns image URL from item data
+# The picture/picture_square fields point to publicdata.insighttimer.com which is dead (NXDOMAIN).
+# Use the predictable libraryitems URL pattern instead.
 sub getImageUrl {
 	my ($item) = @_;
 
-	return undef unless $item;
-
-	if (ref $item->{picture_square}) {
-		return $item->{picture_square}{medium} || $item->{picture_square}{small};
-	}
-	if (ref $item->{picture}) {
-		return $item->{picture}{medium} || $item->{picture}{small};
-	}
-
-	# Construct from item ID (predictable URL pattern)
-	if ($item->{id}) {
-		return DETAIL_URL . $item->{id} . '/pictures/rectangle_medium.jpeg';
-	}
-
-	return undef;
+	return undef unless $item && $item->{id};
+	return DETAIL_URL . $item->{id} . '/pictures/rectangle_medium.jpeg';
 }
 
 # formatDuration($seconds)
